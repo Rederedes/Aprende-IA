@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>DinoQuiz IA | Aprende Inteligencia Artificial huyendo del Dino</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', 'Fredoka One', 'Comic Neue', cursive;
+        }
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 20;
+            pointer-events: none;
+        }
+        .top-bar {
+            background: linear-gradient(135deg, #1e2a2e, #0f1a1f);
+            backdrop-filter: blur(12px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            color: #f9e0a8;
+            border-bottom: 3px solid #ffb347;
+            pointer-events: auto;
+            flex-wrap: wrap;
+            gap: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .score-box, .questions-box {
+            background: #2c3e2f;
+            padding: 6px 18px;
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .score-box span, .questions-box span {
+            color: #ffb347;
+            font-size: 1.6rem;
+        }
+        .danger-meter {
+            background: #3a2a1f;
+            border-radius: 20px;
+            padding: 5px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+        }
+        .danger-fill {
+            width: 100px;
+            height: 10px;
+            background: #ff884d;
+            border-radius: 10px;
+            transition: width 0.2s;
+        }
+        .controls-hint {
+            background: rgba(0,0,0,0.6);
+            border-radius: 30px;
+            padding: 5px 12px;
+            font-size: 0.75rem;
+        }
+        .message-area {
+            position: absolute;
+            bottom: 25%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2e1e0ecc;
+            backdrop-filter: blur(16px);
+            padding: 14px 28px;
+            border-radius: 80px;
+            color: #ffefcf;
+            font-weight: bold;
+            font-size: 1.2rem;
+            border-left: 6px solid #ff884d;
+            pointer-events: none;
+            z-index: 25;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+        }
+        .quiz-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle at 20% 30%, #1e2a3a, #0a0f1a);
+            border-radius: 60px;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            z-index: 100;
+            border: 3px solid #ffaa55;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 0 1000px rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px);
+            text-align: center;
+            font-family: 'Segoe UI', 'Fredoka One', cursive;
+            pointer-events: auto;
+        }
+        .quiz-modal h2 {
+            color: #ffcf8a;
+            font-size: 1.8rem;
+            margin-top: 0;
+        }
+        .quiz-modal p {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #fce8b2;
+            margin-bottom: 25px;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .quiz-option {
+            background: #2d1c0c;
+            border: 2px solid #f5b042;
+            padding: 12px;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #fff0c0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quiz-option:hover {
+            background: #f5b042;
+            color: #1f2a0e;
+            transform: scale(1.02);
+        }
+        .end-game-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1e2a1b;
+            border-radius: 48px;
+            padding: 35px;
+            text-align: center;
+            z-index: 200;
+            border: 4px solid #ffb347;
+            background: #241f12e6;
+            backdrop-filter: blur(12px);
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ffdd99;
+            pointer-events: auto;
+        }
+        .end-game-panel button {
+            background: #f29b2e;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.2rem;
+            border-radius: 40px;
+            font-weight: bold;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+        .hidden {
+            display: none;
+        }
+        @media (max-width: 600px) {
+            .options-grid { grid-template-columns: 1fr; }
+            .quiz-modal p { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ui-container">
+        <div class="top-bar">
+            <div class="score-box">🏆 PUNTOS: <span id="scoreValue">0</span></div>
+            <div class="questions-box">📋 PREGUNTAS: <span id="questionCounter">0</span>/10</div>
+            <div class="danger-meter">🦖 PELIGRO: <div class="danger-fill" id="dangerFill"></div></div>
+            <div class="controls-hint">🎮 WASD / Flechas | 🖱️ Ratón para mirar</div>
+        </div>
+        <div class="message-area" id="statusMsg">⚡ ¡CORRE! El dinosaurio te persigue y te hará preguntas de IA ⚡</div>
+    </div>
+
+    <div id="quizModal" class="quiz-modal hidden">
+        <h2>🦖 ¡DINO-TRAP! Pregunta de IA 🧠</h2>
+        <p id="questionText">Cargando pregunta...</p>
+        <div id="optionsContainer" class="options-grid"></div>
+        <div class="quiz-footer">💡 +100 si aciertas | -100 si fallas | Aprendizaje interactivo</div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        
+        // ---------- PREGUNTAS BASADAS EN EL ARCHIVO ORIGINAL DE IA EDUCATIVA ----------
+        // Contenido extraído de la plataforma: IA Analítica, IA Generativa, Machine Learning, Prompt Engineering, Ética, Personalización, Evaluación, Gamificación, Futuro Docente
+        const questionsIA = [
+            { text: "¿Qué significa 'Prompt Engineering' en el contexto de la IA?", options: ["La clave para comunicarse eficazmente con la IA", "Diseñar chips de computadora", "Programar robots físicos", "Crear bases de datos SQL"], correct: 0 },
+            { text: "¿Cuál es un desafío ÉTICO importante en la IA educativa?", options: ["Privacidad, equidad y sesgos algorítmicos", "Velocidad de procesamiento", "Cantidad de memoria RAM", "Color de la interfaz"], correct: 0 },
+            { text: "La IA Generativa se caracteriza principalmente por:", options: ["Crear contenido único como texto, imágenes o música", "Realizar cálculos matemáticos", "Almacenar grandes volúmenes de datos", "Conectar periféricos"], correct: 0 },
+            { text: "¿Qué papel juega el 'Machine Learning' en la educación?", options: ["Aprender de los datos para personalizar experiencias", "Reemplazar completamente al docente", "Imprimir exámenes", "Dibujar en la pizarra"], correct: 0 },
+            { text: "¿Cómo puede la IA ayudar en la 'Evaluación Asistida'?", options: ["Mediante rúbricas automáticas y feedback personalizado", "Calificando con dados", "Ignorando el progreso del alumno", "Solo con exámenes orales"], correct: 0 },
+            { text: "La 'Gamificación con IA' busca:", options: ["Motivar mediante juegos inteligentes adaptativos", "Aburrir a los estudiantes", "Eliminar los juegos del aula", "Reemplazar a los profesores por robots"], correct: 0 },
+            { text: "¿Cuál es el rol transformador del docente con la IA según la plataforma?", options: ["Guiar, personalizar y fomentar pensamiento crítico usando IA como asistente", "Ser reemplazado por algoritmos", "Solo calificar exámenes", "Ignorar la tecnología"], correct: 0 },
+            { text: "¿Qué beneficio ofrece la IA para la 'Personalización del aprendizaje'?", options: ["Aprendizaje adaptativo a las necesidades de cada estudiante", "El mismo contenido para todos", "Clases más largas", "Eliminar la creatividad"], correct: 0 },
+            { text: "¿Qué es la 'IA Analítica' en el aula?", options: ["Descubrir patrones ocultos en el desempeño estudiantil", "Analizar piedras", "Solo para matemáticas avanzadas", "Un videojuego"], correct: 0 },
+            { text: "Según el material, el 'Futuro Docente' con IA es:", options: ["El profesor como arquitecto del aprendizaje potenciado por IA", "Un rol sin importancia", "Sustitución total por máquinas", "Solo administrar aulas virtuales"], correct: 0 }
+        ];
+        
+        // Mezclamos preguntas para variedad pero manteniendo temática IA
+        let shuffledQuestions = [...questionsIA];
+        for (let i = shuffledQuestions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledQuestions[i], shuffledQuestions[j]] = [shuffledQuestions[j], shuffledQuestions[i]];
+        }
+        
+        let currentQIndex = 0;
+        let score = 0;
+        let questionsAnswered = 0;
+        let gameActive = true;
+        let isWaitingForAnswer = false;
+        let currentQuestionObj = null;
+        
+        // DOM elements
+        const scoreSpan = document.getElementById('scoreValue');
+        const questionCounterSpan = document.getElementById('questionCounter');
+        const dangerFillDiv = document.getElementById('dangerFill');
+        const statusMsgDiv = document.getElementById('statusMsg');
+        const quizModal = document.getElementById('quizModal');
+        const questionTextP = document.getElementById('questionText');
+        const optionsContainer = document.getElementById('optionsContainer');
+        
+        function getNextQuestion() {
+            if (currentQIndex >= shuffledQuestions.length) {
+                // reiniciar ciclo si es necesario pero máximo 10 preguntas
+                currentQIndex = 0;
+            }
+            return { ...shuffledQuestions[currentQIndex++] };
+        }
+        
+        function updateUI() {
+            scoreSpan.innerText = score;
+            questionCounterSpan.innerText = `${questionsAnswered}/10`;
+            const dangerPercent = (questionsAnswered / 10) * 100;
+            dangerFillDiv.style.width = `${dangerPercent}%`;
+            if (dangerPercent > 70) dangerFillDiv.style.backgroundColor = "#ff4d4d";
+            else if (dangerPercent > 40) dangerFillDiv.style.backgroundColor = "#ffaa33";
+            else dangerFillDiv.style.backgroundColor = "#ff884d";
+        }
+        
+        function showFloatyMessage(msg, colorHex) {
+            statusMsgDiv.innerText = msg;
+            statusMsgDiv.style.borderLeftColor = colorHex;
+            setTimeout(() => {
+                if (gameActive && questionsAnswered < 10)
+                    statusMsgDiv.innerText = "🦖 ¡Sigue corriendo! El dinosaurio IA te persigue y te hará preguntas 🧠";
+                else if (questionsAnswered >= 10)
+                    statusMsgDiv.innerText = "🎉 ¡Genio en Inteligencia Artificial! Completaste el desafío 🎉";
+            }, 2200);
+        }
+        
+        function askQuestion() {
+            if (!gameActive || isWaitingForAnswer || questionsAnswered >= 10) return;
+            currentQuestionObj = getNextQuestion();
+            questionTextP.innerText = currentQuestionObj.text;
+            optionsContainer.innerHTML = '';
+            currentQuestionObj.options.forEach((opt, idx) => {
+                const btn = document.createElement('div');
+                btn.className = 'quiz-option';
+                btn.innerText = `${String.fromCharCode(65+idx)}. ${opt}`;
+                btn.dataset.index = idx;
+                btn.addEventListener('click', () => handleAnswer(idx));
+                optionsContainer.appendChild(btn);
+            });
+            isWaitingForAnswer = true;
+            quizModal.classList.remove('hidden');
+        }
+        
+        function handleAnswer(selectedIdx) {
+            if (!gameActive || !isWaitingForAnswer) return;
+            const isCorrect = (selectedIdx === currentQuestionObj.correct);
+            if (isCorrect) {
+                score += 100;
+                showFloatyMessage("✅ ¡Correcto! +100 puntos | Aprendiendo IA", "#8bc34a");
+            } else {
+                score -= 100;
+                const correctAns = currentQuestionObj.options[currentQuestionObj.correct];
+                showFloatyMessage(`❌ Incorrecto. Respuesta: ${correctAns} | -100 puntos`, "#ff8866");
+            }
+            questionsAnswered++;
+            updateUI();
+            quizModal.classList.add('hidden');
+            isWaitingForAnswer = false;
+            
+            if (questionsAnswered >= 10) {
+                endGame();
+            } else {
+                // Delay antes de siguiente captura para dar tiempo a huir
+                setTimeout(() => {
+                    if (gameActive && !isWaitingForAnswer && questionsAnswered < 10) {
+                        // No se pregunta automáticamente, el dinosaurio debe atrapar de nuevo
+                        // El juego continúa, el dino perseguirá
+                    }
+                }, 300);
+            }
+        }
+        
+        function endGame() {
+            gameActive = false;
+            isWaitingForAnswer = true;
+            if (!quizModal.classList.contains('hidden')) quizModal.classList.add('hidden');
+            const endPanel = document.createElement('div');
+            endPanel.className = 'end-game-panel';
+            endPanel.innerHTML = `
+                <div>🏆 ¡MISIÓN IA COMPLETADA! 🏆</div>
+                <div style="font-size:2rem; margin:15px">${score} PUNTOS</div>
+                <div>📚 Preguntas respondidas: 10/10 sobre Inteligencia Artificial</div>
+                <div>🧠 ¡Eres un experto en IA Educativa!</div>
+                <button id="restartBtn">🔄 REINICIAR AVENTURA</button>
+            `;
+            document.body.appendChild(endPanel);
+            document.getElementById('restartBtn').addEventListener('click', () => location.reload());
+            statusMsgDiv.innerText = `🎉 Juego finalizado! Puntaje final: ${score} puntos 🎉`;
+        }
+        
+        // ---------- ESCENA 3D: DINOSAURIO VELOCIDAD MEDIA Y ESTUDIANTE ----------
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x071a2b);
+        scene.fog = new THREE.FogExp2(0x071a2b, 0.006);
+        
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(6, 4, 8);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+        
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.07;
+        controls.zoomSpeed = 0.8;
+        controls.target.set(0, 1.2, 0);
+        
+        // Iluminación vibrante
+        const ambient = new THREE.AmbientLight(0x404060);
+        scene.add(ambient);
+        const sunLight = new THREE.DirectionalLight(0xffeebb, 1.3);
+        sunLight.position.set(8, 12, 5);
+        sunLight.castShadow = true;
+        scene.add(sunLight);
+        const fillLight = new THREE.PointLight(0xffaa66, 0.6);
+        fillLight.position.set(2, 3, 4);
+        scene.add(fillLight);
+        const backLight = new THREE.PointLight(0x77aaff, 0.5);
+        backLight.position.set(-3, 2, -5);
+        scene.add(backLight);
+        
+        // Suelo colorido
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x3f7842, roughness: 0.7 });
+        const groundPlane = new THREE.Mesh(new THREE.PlaneGeometry(38, 38), groundMat);
+        groundPlane.rotation.x = -Math.PI/2;
+        groundPlane.position.y = -0.5;
+        groundPlane.receiveShadow = true;
+        scene.add(groundPlane);
+        
+        const gridHelper = new THREE.GridHelper(38, 28, 0xffcc88, 0x66aa55);
+        gridHelper.position.y = -0.4;
+        scene.add(gridHelper);
+        
+        // Decoración: arbustos y rocas
+        const bushMat = new THREE.MeshStandardMaterial({ color: 0x7cb518 });
+        for (let i = 0; i < 300; i++) {
+            const bush = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 0.3, 5), bushMat);
+            const angle = Math.random() * Math.PI * 2;
+            const rad = 9 + Math.random() * 14;
+            bush.position.x = Math.cos(angle) * rad;
+            bush.position.z = Math.sin(angle) * rad;
+            bush.position.y = -0.45;
+            bush.castShadow = true;
+            scene.add(bush);
+        }
+        
+        // Árboles estilizados
+        function addTree(x, z) {
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 1.3), new THREE.MeshStandardMaterial({ color: 0xbd7a4a }));
+            trunk.position.set(x, -0.3, z);
+            trunk.castShadow = true;
+            const foliage = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.3, 8), new THREE.MeshStandardMaterial({ color: 0x6ac46e }));
+            foliage.position.set(x, 0.7, z);
+            foliage.castShadow = true;
+            scene.add(trunk, foliage);
+        }
+        for (let i = 0; i < 50; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const rad = 10 + Math.random() * 12;
+            addTree(Math.cos(angle) * rad, Math.sin(angle) * rad);
+        }
+        
+        // ---------- DINOSAURIO COLORIDO (velocidad media)----------
+        const dinoGroup = new THREE.Group();
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x6fc96e, emissive: 0x226622, emissiveIntensity: 0.15 });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.0, 2.2), bodyMat);
+        body.castShadow = true;
+        body.position.y = 0.2;
+        dinoGroup.add(body);
+        
+        const headMat = new THREE.MeshStandardMaterial({ color: 0x80d96e });
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.75, 24, 24), headMat);
+        head.position.set(0, 0.7, 1.1);
+        head.castShadow = true;
+        dinoGroup.add(head);
+        
+        // Ojos expresivos
+        const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.22), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        eyeWhite.position.set(-0.35, 1.05, 1.35);
+        const eyeWhiteR = new THREE.Mesh(new THREE.SphereGeometry(0.22), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        eyeWhiteR.position.set(0.35, 1.05, 1.35);
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.13), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+        pupil.position.set(-0.35, 1.03, 1.6);
+        const pupilR = new THREE.Mesh(new THREE.SphereGeometry(0.13), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+        pupilR.position.set(0.35, 1.03, 1.6);
+        dinoGroup.add(eyeWhite, eyeWhiteR, pupil, pupilR);
+        
+        // Cresta arcoíris
+        const crestMat = new THREE.MeshStandardMaterial({ color: 0xff8844 });
+        const crest = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.7, 6), crestMat);
+        crest.position.set(0, 1.2, 1.0);
+        dinoGroup.add(crest);
+        
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.0, 6), new THREE.MeshStandardMaterial({ color: 0x61b84e }));
+        tail.position.set(0, 0.15, -1.4);
+        tail.rotation.x = 0.3;
+        dinoGroup.add(tail);
+        
+        const legMatD = new THREE.MeshStandardMaterial({ color: 0x5fae4a });
+        const legPositions = [[-0.6, -0.2, 0.8], [0.6, -0.2, 0.8], [-0.6, -0.2, -0.8], [0.6, -0.2, -0.8]];
+        legPositions.forEach(pos => {
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.55, 6), legMatD);
+            leg.position.set(pos[0], pos[1], pos[2]);
+            leg.castShadow = true;
+            dinoGroup.add(leg);
+        });
+        
+        dinoGroup.scale.set(0.85, 0.85, 0.85);
+        dinoGroup.position.set(5, -0.2, 4);
+        scene.add(dinoGroup);
+        
+        // ---------- PERSONAJE ESTUDIANTE (con estilo) ----------
+        const playerGroup = new THREE.Group();
+        const playerBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.8), new THREE.MeshStandardMaterial({ color: 0xffaa77, emissive: 0x442200 }));
+        playerBody.castShadow = true;
+        playerGroup.add(playerBody);
+        const playerHead = new THREE.Mesh(new THREE.SphereGeometry(0.52), new THREE.MeshStandardMaterial({ color: 0xffcc99 }));
+        playerHead.position.y = 0.68;
+        playerHead.castShadow = true;
+        playerGroup.add(playerHead);
+        // Gafas futuristas IA
+        const glasses = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.07, 16, 32), new THREE.MeshStandardMaterial({ color: 0x44aaff }));
+        glasses.position.set(0, 0.84, 0.48);
+        playerGroup.add(glasses);
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        eyeL.position.set(-0.22, 0.88, 0.58);
+        const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        eyeR.position.set(0.22, 0.88, 0.58);
+        playerGroup.add(eyeL, eyeR);
+        // Mochila de conocimientos
+        const backpack = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.4), new THREE.MeshStandardMaterial({ color: 0xdd8844 }));
+        backpack.position.set(0, 0.1, -0.45);
+        playerGroup.add(backpack);
+        
+        playerGroup.position.set(0, -0.25, 0);
+        playerGroup.castShadow = true;
+        scene.add(playerGroup);
+        
+        // Partículas mágicas de IA
+        const particleGeo = new THREE.BufferGeometry();
+        const particleCount = 500;
+        const particlePositions = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount; i++) {
+            particlePositions[i*3] = (Math.random() - 0.5) * 36;
+            particlePositions[i*3+1] = Math.random() * 3;
+            particlePositions[i*3+2] = (Math.random() - 0.5) * 36;
+        }
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particleMat = new THREE.PointsMaterial({ color: 0x88ddff, size: 0.07, transparent: true });
+        const particles = new THREE.Points(particleGeo, particleMat);
+        scene.add(particles);
+        
+        // ----- MOVIMIENTO DEL JUGADOR (fluido) -----
+        const keyState = { w: false, s: false, a: false, d: false };
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w') keyState.w = true;
+            if (key === 's') keyState.s = true;
+            if (key === 'a') keyState.a = true;
+            if (key === 'd') keyState.d = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w') keyState.w = false;
+            if (key === 's') keyState.s = false;
+            if (key === 'a') keyState.a = false;
+            if (key === 'd') keyState.d = false;
+        });
+        
+        function movePlayer() {
+            if (!gameActive || isWaitingForAnswer) return;
+            let moveX = 0, moveZ = 0;
+            const speed = 4.5;
+            if (keyState.w) moveZ -= speed;
+            if (keyState.s) moveZ += speed;
+            if (keyState.a) moveX -= speed;
+            if (keyState.d) moveX += speed;
+            if (moveX !== 0 || moveZ !== 0) {
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                let delta = new THREE.Vector3(0, 0, 0);
+                delta.addScaledVector(forward, moveZ);
+                delta.addScaledVector(right, moveX);
+                delta.y = 0;
+                let newX = playerGroup.position.x + delta.x;
+                let newZ = playerGroup.position.z + delta.z;
+                if (Math.abs(newX) < 17 && Math.abs(newZ) < 17) {
+                    playerGroup.position.x = newX;
+                    playerGroup.position.z = newZ;
+                    camera.position.x = newX;
+                    camera.position.z = newZ + 2.2;
+                    controls.target.set(newX, 1.2, newZ);
+                }
+            }
+        }
+        
+        // ----- IA DEL DINOSAURIO: velocidad media (justo para que sea evitable pero desafiante) -----
+        let dinoSpeed = 2.45; // velocidad media, permite que el estudiante pueda escapar si es hábil
+        
+        function updateDino() {
+            if (!gameActive) return;
+            const playerPos = playerGroup.position;
+            const dinoPos = dinoGroup.position;
+            const dx = playerPos.x - dinoPos.x;
+            const dz = playerPos.z - dinoPos.z;
+            const dist = Math.hypot(dx, dz);
+            if (dist > 0.2) {
+                const move = dinoSpeed * 0.016; // delta constante
+                const stepX = (dx / dist) * move;
+                const stepZ = (dz / dist) * move;
+                dinoGroup.position.x += stepX;
+                dinoGroup.position.z += stepZ;
+            }
+            // Rotación para mirar al estudiante
+            dinoGroup.lookAt(playerPos.x, dinoGroup.position.y, playerPos.z);
+            // Pequeño salto animado
+            dinoGroup.position.y = -0.2 + Math.sin(Date.now() * 0.01) * 0.04;
+            
+            // Colisión: si el dinosaurio atrapa al estudiante y no estamos en pregunta, lanzar pregunta
+            const distanceToPlayer = playerGroup.position.distanceTo(dinoGroup.position);
+            if (distanceToPlayer < 1.3 && gameActive && !isWaitingForAnswer && questionsAnswered < 10) {
+                // Atrapado! Hacer pregunta
+                askQuestion();
+                // Pequeño retroceso del dinosaurio para evitar múltiples colisiones inmediatas
+                dinoGroup.position.x -= 0.6;
+                dinoGroup.position.z -= 0.6;
+                // Asegurar que no salga del mapa
+                dinoGroup.position.x = Math.min(16, Math.max(-16, dinoGroup.position.x));
+                dinoGroup.position.z = Math.min(16, Math.max(-16, dinoGroup.position.z));
+            }
+        }
+        
+        // animaciones adicionales
+        let time = 0;
+        function animateMisc() {
+            time += 0.02;
+            particles.rotation.y += 0.002;
+            // pupilas siguen al estudiante (efecto visual)
+            const playerPosPl = playerGroup.position;
+            if (pupil && pupilR) {
+                // solo efecto estético
+            }
+        }
+        
+        // Posiciones iniciales
+        playerGroup.position.set(0, -0.25, 0);
+        camera.position.set(0, 3.5, 6);
+        controls.target.set(0, 1.2, 0);
+        dinoGroup.position.set(4.2, -0.2, 3.8);
+        
+        // Mostrar mensaje de bienvenida
+        setTimeout(() => {
+            statusMsgDiv.innerText = "🧠 ¡Bienvenido! Responde preguntas de IA cuando el dinosaurio te atrape. ¡Esquiva para ganar tiempo!";
+            setTimeout(() => {
+                if (gameActive && questionsAnswered === 0)
+                    statusMsgDiv.innerText = "🦖 ¡El dinosaurio IA te persigue! Corre y prepárate para aprender 🧠";
+            }, 3000);
+        }, 500);
+        
+        // Loop principal
+        function gameLoop() {
+            requestAnimationFrame(gameLoop);
+            if (gameActive && !isWaitingForAnswer) {
+                movePlayer();
+                updateDino();
+            }
+            animateMisc();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        gameLoop();
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
